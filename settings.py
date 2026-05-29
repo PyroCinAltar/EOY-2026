@@ -1,0 +1,13 @@
+# Game
+WIN_WIDTH = 1600
+WIN_HEIGHT = 900
+FPS = 60
+
+# Player
+PL_START_X = 400
+PL_START_Y = 500
+PLAYER_SIZE = 0.35
+PLAYER_SPEED = 8
+
+# Bullet settings
+SHOOT_COOLDOWN = 20
