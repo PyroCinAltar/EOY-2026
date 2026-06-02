@@ -1,13 +1,14 @@
 import pygame
 from settings import *
-import settings
 import math
 import sys    
 
 pygame.init()
 screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+pygame.display.set_caption("Top Down Shooter")
 clock = pygame.time.Clock()
 
+background = pygame.image.load('floors/ground.png').convert()
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -17,6 +18,7 @@ class Player(pygame.sprite.Sprite):
         self.base_player_image = self.image
         self.hitbox_rect = self.base_player_image.get_rect(center = self.pos) # actually a hurtbox but ok
         self.rect = self.hitbox_rect.copy()
+        self.gun_barrel_offset = pygame.math.Vector2(GUN_OFFSET_X, GUN_OFFSET_Y)
         
         #shooting
         self.shoot_cooldown = 0
@@ -24,8 +26,8 @@ class Player(pygame.sprite.Sprite):
     
     def player_rotation(self):
         self.mouse_coords = pygame.mouse.get_pos()
-        self.x_change_mouse_player = (self.mouse_coords[0]-self.hitbox_rect.centerx)
-        self.y_change_mouse_player =(self.mouse_coords[1]-self.hitbox_rect.centery)
+        self.x_change_mouse_player = (self.mouse_coords[0]-WIN_WIDTH//2)
+        self.y_change_mouse_player =(self.mouse_coords[1]-WIN_HEIGHT//2)
         self.angle = math.degrees(math.atan2(self.y_change_mouse_player, self.x_change_mouse_player))
         self.image = pygame.transform.rotate(self.base_player_image, -self.angle)
         self.rect = self.image.get_rect(center = self.hitbox_rect.center)
@@ -52,7 +54,7 @@ class Player(pygame.sprite.Sprite):
         
         # Shooting
         self.mouse_coords = pygame.mouse.get_pos()
-        if pygame.mouse.get_pressed() == (1, 0,(self.mouse_coords[0]-self.hitbox_rect.centerx), 0):
+        if pygame.mouse.get_pressed()[0]:
             self.shoot = True
             self.is_shooting()
         else:
@@ -60,7 +62,7 @@ class Player(pygame.sprite.Sprite):
     def is_shooting(self):
         if self.shoot_cooldown == 0:
             self.shoot_cooldown = SHOOT_COOLDOWN
-            spawn_bullet_pos = self.pos
+            spawn_bullet_pos = self.pos + self.gun_barrel_offset.rotate(self.angle)
             self.bullet = Bullet(spawn_bullet_pos[0], spawn_bullet_pos[1], self.angle)
             bullet_group.add(self.bullet)
             all_sprites_group.add(self.bullet)
@@ -93,6 +95,8 @@ class Bullet(pygame.sprite.Sprite):
         self.speed = BULLET_SPEED
         self.x_vel = math.cos(self.angle * (2*math.pi/360)) * self.speed
         self.y_vel = math.sin(self.angle * (2*math.pi/360)) * self.speed
+        self.bullet_lifetime = BULLET_LIFETIME
+        self.spawn_time = pygame.time.get_ticks() # gets the specific time the bullet was created
         pass
     
     def bullet_movement(self):
@@ -101,23 +105,70 @@ class Bullet(pygame.sprite.Sprite):
         
         self.rect.x = int(self.x)
         self.rect.y = int(self.y)
+        
+        if pygame.time.get_ticks() - self.spawn_time > self.bullet_lifetime:
+            self.kill()
         pass
     def update(self):
         self.bullet_movement()
         
-    
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, position):
+        super().__init__(enemy_group, all_sprites_group)
+        self.image = pygame.image.load('necromancer/0-3.png')
+        self.image = pygame.transform.rotozoom(self.image, 0, 2)
         
-# class Camera(pygame.sprite.Group):
-#     def __init__(self):
-#         super().__init__() 
-#         self.offset = pygame.math.Vector2()
+        self.rect = self.image.get_rect()
+        self.rect.center = position
+        
+        self.direction = pygame.math.Vector2()
+        self.velocity = pygame.math.Vector2()
+        self.speed = ENEMY_SPEED
+        
+    def hunt_player(self):
+        player_vector = pygame.math.Vector2(player.hitbox_rect.center)
+        enemy_vector = pygame.math.Vector2(self.rect.center)
+        distance = self.get_vector_distance(player_vector, enemy_vector)
+        
+        if distance > 0:
+            pass
+        
+        
+    def get_vector_distance(self, vect1, vect2):
+        return(vect1-vect2).magnitude()
+        
+class Camera(pygame.sprite.Group):
+    def __init__(self):
+        super().__init__() 
+        self.offset = pygame.math.Vector2()
+        self.floor_rect = background.get_rect(topleft = (0,0))
+        
+        
+    def custom_draw(self):
+        self.offset.x = player.rect.centerx -  WIN_WIDTH // 2
+        self.offset.y = player.rect.centery -  WIN_HEIGHT // 2
+        
+        # draw floor
+        floor_offset_pos = self.floor_rect.topleft - self.offset
+        screen.blit(background, floor_offset_pos)
+        
+        for sprite in all_sprites_group:
+            offset_pos = sprite.rect.topleft - self.offset
+            screen.blit(sprite.image, offset_pos)
             
+            
+
 if __name__ == "__main__":
-    
-    player = Player()
     
     all_sprites_group = pygame.sprite.Group()
     bullet_group = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
+    
+    camera = Camera()
+    player = Player()
+    necromancer = Enemy((400, 400))
+
     
     all_sprites_group.add(player)
     
@@ -134,7 +185,8 @@ if __name__ == "__main__":
         # screen.blit(player.image, player.rect) 
         # player.update()
         
-        all_sprites_group.draw(screen)
+        # all_sprites_group.draw(screen)
+        camera.custom_draw()
         all_sprites_group.update()
         # pygame.draw.rect(screen, "red", player.hitbox_rect, width = 2)
         # pygame.draw.rect(screen, "yellow", player.rect, width = 2)
