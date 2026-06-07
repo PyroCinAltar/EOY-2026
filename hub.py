@@ -73,6 +73,23 @@ class Player(pygame.sprite.Sprite):
             bullet_group.add(self.bullet)
             all_sprites_group.add(self.bullet)
             
+    def take_damage(self, value):
+        if ui.currentHP > 0:
+            ui.currentHP -= value
+            self.health -= value
+        
+        if ui.currentHP <= 0:
+            ui.currentHP = 0
+            self.health = 0
+            
+    def gain_health(self, value):
+        if ui.currentHP < ui.maxHP:
+            ui.currentHP += value
+            self.health += value
+            
+        if ui.currentHP >= ui.maxHP:
+            ui.currentHP = ui.maxHP
+            self.health = ui.maxHP
            
     def move(self):
         self.pos += pygame.math.Vector2(self.velocity_x, self.velocity_y)
