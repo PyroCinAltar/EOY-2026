@@ -1,3 +1,6 @@
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Game
 WIN_WIDTH = 1600
 WIN_HEIGHT = 900
@@ -7,9 +10,13 @@ FPS = 60
 PL_START_X = 400
 PL_START_Y = 500
 PLAYER_SIZE = 0.35
-PLAYER_SPEED = 5
+PLAYER_SPEED = 8
 GUN_OFFSET_X = 45
 GUN_OFFSET_Y = 20
+
+PLAYER_HP = 100
+
+PLAYER_ATTACK_DMG = 10
 
 # Bullet settings
 SHOOT_COOLDOWN = 20
@@ -20,9 +27,11 @@ BULLET_LIFETIME = 750
 # Enemy Settings
 ENEMY_SPEED = 4
 monster_stats = {
-    
+    # ENEMY_HEALTH = 4
 }
 
+NECROMANCER_HP = 4
+NECROMANCER_ATTACK_DMG = 25
 # Colors
 RED = (255,0,0)
 GREEN = (0,255,0)

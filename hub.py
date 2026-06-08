@@ -2,6 +2,7 @@ import pygame
 from settings import *
 import math
 import sys
+from pytmx.util_pygame import load_pygame
 
 # Loading game
 pygame.init()
@@ -9,8 +10,11 @@ screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
 pygame.display.set_caption("Top Down Shooter")
 clock = pygame.time.Clock()
 
-background = pygame.image.load('floors/ground.png').convert()
+# background = pygame.image.load('floors/ground.png').convert()
+background = load_pygame(os.path.join('map/Spaceship.tmx'))
 font = pygame.font.SysFont('Library/font/Skia', 30)
+
+
 # Player
 class Player(pygame.sprite.Sprite):
     
@@ -24,7 +28,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.hitbox_rect.copy()
         self.gun_barrel_offset = pygame.math.Vector2(GUN_OFFSET_X, GUN_OFFSET_Y)
         
-        self.health = 100
+        self.health = PLAYER_HP
         
         #shooting
         self.shoot_cooldown = 0
@@ -65,6 +69,7 @@ class Player(pygame.sprite.Sprite):
             self.is_shooting()
         else:
             self.shoot = False
+    
     def is_shooting(self):
         if self.shoot_cooldown == 0:
             self.shoot_cooldown = SHOOT_COOLDOWN
@@ -135,7 +140,7 @@ class Bullet(pygame.sprite.Sprite):
     def update(self):
         self.bullet_movement()
         
-# Enemy
+# Enemy 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, position):
         super().__init__(enemy_group, all_sprites_group)
@@ -144,12 +149,17 @@ class Enemy(pygame.sprite.Sprite):
         
         self.rect = self.image.get_rect()
         self.rect.center = position
-        
+        self.health = 4
         self.direction = pygame.math.Vector2()
         self.velocity = pygame.math.Vector2()
         self.speed = ENEMY_SPEED
-        
+        # self.health = ENEMY_HEALTH
+        self.attack_cooldown = 0
         self.position = pygame.math.Vector2(position)
+        
+    def take_damage(self):
+        self.health -= PLAYER_ATTACK_DMG
+        pass
         
     def hunt_player(self):
         player_vector = pygame.math.Vector2(player.hitbox_rect.center)
@@ -172,6 +182,36 @@ class Enemy(pygame.sprite.Sprite):
     
     def update(self):
         self.hunt_player()
+
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+
+        if self.rect.colliderect(player.hitbox_rect):
+            if self.attack_cooldown == 0:
+                self.attack()
+                self.attack_cooldown = 60
+
+        if self.health <= 0:
+            self.kill()
+        
+class Necromancer(Enemy):
+    def __init__(self, position):
+        super().__init__(position)
+
+        self.image = pygame.image.load(
+            'necromancer/0-3.png'
+        ).convert_alpha()
+
+        self.image = pygame.transform.rotozoom(
+            self.image, 0, 2
+        )
+
+        self.rect = self.image.get_rect(center=position)
+
+        self.health = NECROMANCER_HP
+        
+    def attack(self):
+        player.take_damage(NECROMANCER_ATTACK_DMG)
         
 # Camera Movement
 class Camera(pygame.sprite.Group):
@@ -187,7 +227,8 @@ class Camera(pygame.sprite.Group):
         
         # draw floor
         floor_offset_pos = self.floor_rect.topleft - self.offset
-        screen.blit(background, floor_offset_pos)
+        scaled_background = pygame.transform.scale_by(background, (2,2))
+        screen.blit(scaled_background, floor_offset_pos)
         
         for sprite in all_sprites_group:
             offset_pos = sprite.rect.topleft - self.offset
@@ -195,25 +236,26 @@ class Camera(pygame.sprite.Group):
             
 class UI():
     def __init__(self):
-        self.maxHP = 100
-        self.currentHP = 100
-        self.HP_bar_length = 100
+        self.maxHP = 4
+        self.currentHP = 4
+        self.HP_bar_length = 4
         self.health_ratio = self.maxHP / self.HP_bar_length 
         self.bar_color = None
+        self.bar_length = 100
     
     def display_health_bar(self): 
-        pygame.draw.rect(screen, BLACK, (10, 15, self.HP_bar_length * 3, 20)) 
+        pygame.draw.rect(screen, BLACK, (10, 15, self.bar_length * 3, 20)) 
 
-        if self.currentHP >= 75:
+        if self.currentHP >= 3:
             pygame.draw.rect(screen, GREEN, (10, 15, self.currentHP * 3, 20))  
             self.bar_color = GREEN
-        elif self.currentHP >= 25:
+        elif self.currentHP >= 1:
             pygame.draw.rect(screen, YELLOW, (10, 15, self.currentHP * 3, 20)) 
             self.bar_color = YELLOW 
         elif self.currentHP >= 0:
             pygame.draw.rect(screen, RED, (10, 15, self.currentHP * 3, 20))
             self.bar_color = RED
-        pygame.draw.rect(screen, WHITE, (10, 15, self.HP_bar_length * 3, 20), 4)
+        pygame.draw.rect(screen, WHITE, (10, 15, self.bar_length * 3, 20), 4)
 
             
     def display_health_text(self):
@@ -236,7 +278,7 @@ if __name__ == "__main__":
     
     camera = Camera()
     player = Player()
-    necromancer = Enemy((400, 400))
+    necromancer = Necromancer((400, 400))
     ui = UI()
 
     
@@ -258,9 +300,18 @@ if __name__ == "__main__":
         # all_sprites_group.draw(screen)
         camera.custom_draw()
         all_sprites_group.update()
+        for bullet in bullet_group:
+            hit_enemies = pygame.sprite.spritecollide(
+                bullet,
+                enemy_group,
+                False
+            )
+            for enemy in hit_enemies:
+                enemy.take_damage()
+                bullet.kill()
         ui.update()
-        # pygame.draw.rect(screen, "red", player.hitbox_rect, width = 2)
-        # pygame.draw.rect(screen, "yellow", player.rect, width = 2)
+        pygame.draw.rect(screen, "red", player.hitbox_rect, width = 2)
+        pygame.draw.rect(screen, "yellow", player.rect, width = 2)
                 
         pygame.display.update()
         clock.tick(FPS)
