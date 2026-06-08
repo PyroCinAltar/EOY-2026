@@ -1,32 +1,49 @@
 import pygame
-from settings import *
+from random import uniform, choice, randint, random
 import math
-import sys
-from pytmx.util_pygame import load_pygame
+import settings
+from settings import *
+from tilemap import collide_hit_rect
+import pytweening
+from itertools import chain
+vec = pygame.math.Vector2
 
-# Loading game
-pygame.init()
-screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
-pygame.display.set_caption("Top Down Shooter")
-clock = pygame.time.Clock()
-
-# background = pygame.image.load('floors/ground.png').convert()
-background = load_pygame(os.path.join('map/Spaceship.tmx'))
-font = pygame.font.SysFont('Library/font/Skia', 30)
-
+def collide_with_walls(sprite, group, dir):
+    if dir == 'x':
+        hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
+        if hits:
+            if hits[0].rect.centerx > sprite.hit_rect.centerx:
+                sprite.pos.x = hits[0].rect.left - sprite.hit_rect.width / 2
+            if hits[0].rect.centerx < sprite.hit_rect.centerx:
+                sprite.pos.x = hits[0].rect.right + sprite.hit_rect.width / 2
+            sprite.vel.x = 0
+            sprite.hit_rect.centerx = sprite.pos.x
+    if dir == 'y':
+        hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
+        if hits:
+            if hits[0].rect.centery > sprite.hit_rect.centery:
+                sprite.pos.y = hits[0].rect.top - sprite.hit_rect.height / 2
+            if hits[0].rect.centery < sprite.hit_rect.centery:
+                sprite.pos.y = hits[0].rect.bottom + sprite.hit_rect.height / 2
+            sprite.vel.y = 0
+            sprite.hit_rect.centery = sprite.pos.y
+            
+            
 
 # Player
 class Player(pygame.sprite.Sprite):
     
     def __init__(self):
         super().__init__()
-        self.image = pygame.transform.rotozoom(pygame.image.load('player/0.png').convert_alpha(), 0, PLAYER_SIZE)
-        self.pos = pygame.math.Vector2(PL_START_X, PL_START_Y)
-        self.speed = PLAYER_SPEED
-        self.base_player_image = self.image
-        self.hitbox_rect = self.base_player_image.get_rect(center = self.pos) # actually a hurtbox but ok
-        self.rect = self.hitbox_rect.copy()
-        self.gun_barrel_offset = pygame.math.Vector2(GUN_OFFSET_X, GUN_OFFSET_Y)
+        # self.image = pygame.transform.rotozoom(pygame.image.load('player/0.png').convert_alpha(), 0, PLAYER_SIZE)
+        # self.pos = pygame.math.Vector2(PL_START_X, PL_START_Y)
+        # self.speed = PLAYER_SPEED
+        # self.base_player_image = self.image
+        # self.hitbox_rect = self.base_player_image.get_rect(center = self.pos)
+        # self.rect = self.hitbox_rect.copy()
+        # self.gun_barrel_offset = pygame.math.Vector2(GUN_OFFSET_X, GUN_OFFSET_Y)
+        
+        
         
         self.health = PLAYER_HP
         
@@ -36,8 +53,8 @@ class Player(pygame.sprite.Sprite):
     
     def player_rotation(self):
         self.mouse_coords = pygame.mouse.get_pos()
-        self.x_change_mouse_player = (self.mouse_coords[0]-WIN_WIDTH//2)
-        self.y_change_mouse_player =(self.mouse_coords[1]-WIN_HEIGHT//2)
+        self.x_change_mouse_player = (self.mouse_coords[0]-WIDTH//2)
+        self.y_change_mouse_player =(self.mouse_coords[1]-HEIGHT//2)
         self.angle = math.degrees(math.atan2(self.y_change_mouse_player, self.x_change_mouse_player))
         self.image = pygame.transform.rotate(self.base_player_image, -self.angle)
         self.rect = self.image.get_rect(center = self.hitbox_rect.center)
@@ -213,105 +230,3 @@ class Necromancer(Enemy):
     def attack(self):
         player.take_damage(NECROMANCER_ATTACK_DMG)
         
-# Camera Movement
-class Camera(pygame.sprite.Group):
-    def __init__(self):
-        super().__init__() 
-        self.offset = pygame.math.Vector2()
-        self.floor_rect = background.get_rect(topleft = (0,0))
-        
-        
-    def custom_draw(self):
-        self.offset.x = player.rect.centerx -  WIN_WIDTH // 2
-        self.offset.y = player.rect.centery -  WIN_HEIGHT // 2
-        
-        # draw floor
-        floor_offset_pos = self.floor_rect.topleft - self.offset
-        scaled_background = pygame.transform.scale_by(background, (2,2))
-        screen.blit(scaled_background, floor_offset_pos)
-        
-        for sprite in all_sprites_group:
-            offset_pos = sprite.rect.topleft - self.offset
-            screen.blit(sprite.image, offset_pos)
-            
-class UI():
-    def __init__(self):
-        self.maxHP = 4
-        self.currentHP = 4
-        self.HP_bar_length = 4
-        self.health_ratio = self.maxHP / self.HP_bar_length 
-        self.bar_color = None
-        self.bar_length = 100
-    
-    def display_health_bar(self): 
-        pygame.draw.rect(screen, BLACK, (10, 15, self.bar_length * 3, 20)) 
-
-        if self.currentHP >= 3:
-            pygame.draw.rect(screen, GREEN, (10, 15, self.currentHP * 3, 20))  
-            self.bar_color = GREEN
-        elif self.currentHP >= 1:
-            pygame.draw.rect(screen, YELLOW, (10, 15, self.currentHP * 3, 20)) 
-            self.bar_color = YELLOW 
-        elif self.currentHP >= 0:
-            pygame.draw.rect(screen, RED, (10, 15, self.currentHP * 3, 20))
-            self.bar_color = RED
-        pygame.draw.rect(screen, WHITE, (10, 15, self.bar_length * 3, 20), 4)
-
-            
-    def display_health_text(self):
-        health_surface = font.render(f"{player.health} / {self.maxHP}", False, self.bar_color) 
-        health_rect = health_surface.get_rect(center = (410, 25))
-        screen.blit(health_surface, health_rect)
-            
-    def update(self): 
-        self.display_health_bar()
-        self.display_health_text()
-        
-class map(pygame.sprite.Group):
-    pass
-
-if __name__ == "__main__":
-    
-    all_sprites_group = pygame.sprite.Group()
-    bullet_group = pygame.sprite.Group()
-    enemy_group = pygame.sprite.Group()
-    
-    camera = Camera()
-    player = Player()
-    necromancer = Necromancer((400, 400))
-    ui = UI()
-
-    
-    all_sprites_group.add(player)
-    
-    
-    while True:
-        screen.fill((0,0,0))  
-        keys = pygame.key.get_pressed()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-                
-        
-        # screen.blit(player.image, player.rect) 
-        # player.update()
-        
-        # all_sprites_group.draw(screen)
-        camera.custom_draw()
-        all_sprites_group.update()
-        for bullet in bullet_group:
-            hit_enemies = pygame.sprite.spritecollide(
-                bullet,
-                enemy_group,
-                False
-            )
-            for enemy in hit_enemies:
-                enemy.take_damage()
-                bullet.kill()
-        ui.update()
-        pygame.draw.rect(screen, "red", player.hitbox_rect, width = 2)
-        pygame.draw.rect(screen, "yellow", player.rect, width = 2)
-                
-        pygame.display.update()
-        clock.tick(FPS)
