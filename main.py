@@ -3,7 +3,7 @@ import sys
 from random import choice, random
 from os import path
 from settings import *
-from sprites import *
+from sprites2 import *
 from tilemap import *
 
 def draw_player_health(surface, x, y, pct):
@@ -40,6 +40,11 @@ class Game:
         
     def load_data(self):
         game_folder = path.dirname(__file__)
+        img_folder = path.join(game_folder, 'img')
+        self.map_folder = path.join(game_folder, 'map')
+        self.player_image = pg.image.load(path.join(img_folder, PLAYER_IMAGE)).convert_alpha()
+        self.bullet_image = pg.image.load(path.join(img_folder, BULLET_IMAGE)).convert_alpha()
+        self.enemy_image = pg.image.load(path.join(img_folder, MONSTERS['necromancer']['image'])).convert_alpha()
         
     
     def new_game(self):
@@ -48,21 +53,21 @@ class Game:
         self.mobs = pg.sprite.Group()
         self.bullets = pg.sprite.Group()
         self.items = pg.sprite.Group()
-        self.map = TiledMap(path.join(self.map_folder, 'level1.tmx'))
+        self.map = TiledMap(path.join(self.map_folder, '/Spaceship.tmx'))
         self.map_img = self.map.make_map()
         self.map.rect = self.map_img.get_rect()
         for tile_object in self.map.tmxdata.objects:
             obj_center = vec(tile_object.x + tile_object.width / 2,
                              tile_object.y + tile_object.height / 2)
-            # if tile_object.name == 'player':
-            #     self.player = Player(self, obj_center.x, obj_center.y)
-            # if tile_object.name == 'zombie':
-            #     Mob(self, obj_center.x, obj_center.y)
-            # if tile_object.name == 'wall':
-            #     Obstacle(self, tile_object.x, tile_object.y,
-            #              tile_object.width, tile_object.height)
-            # if tile_object.name in ['health', 'shotgun']:
-            #     Item(self, obj_center, tile_object.name)
+            if tile_object.name == 'player':
+                self.player = Player(self, obj_center.x, obj_center.y)
+            if tile_object.name == 'zombie':
+                Enemy(self, obj_center.x, obj_center.y)
+            if tile_object.name == 'wall':
+                Barrier(self, tile_object.x, tile_object.y,
+                         tile_object.width, tile_object.height)
+            if tile_object.name in ['health', 'box']:
+                Item(self, obj_center, tile_object.name)
         self.camera = Camera(self.map.width, self.map.height)
         self.draw_debug = False
         self.paused = False

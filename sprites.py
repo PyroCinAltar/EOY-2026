@@ -175,7 +175,7 @@ class Enemy(pygame.sprite.Sprite):
         self.position = pygame.math.Vector2(position)
         
     def take_damage(self):
-        self.health -= weapons['pistol']['damage']
+        self.health -= weapons['pistol'][]
         pass
         
     def hunt_player(self):
