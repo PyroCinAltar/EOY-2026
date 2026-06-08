@@ -2,7 +2,7 @@ import pygame
 import pytmx
 from settings import *
 
-def collision_hit_rect(obj1, obj2):
+def collide_hit_rect(obj1, obj2):
     return obj1.hit_rect.colliderect(obj2.rect)
 
 class TiledMap:

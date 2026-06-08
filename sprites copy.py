@@ -4,8 +4,7 @@ import math
 import settings
 from settings import *
 from tilemap import collide_hit_rect
-import pytweening
-from itertools import chain
+import pytweening as tween
 vec = pg.math.Vector2
 
 def collide_with_walls(sprite, group, dir):
@@ -108,8 +107,7 @@ class Player(pg.sprite.Sprite):
     def change_health(self, value):
         self.health += value
         if self.health > PLAYER_HP:
-            self.health =  PLAYER_HP
-            
+            self.health = PLAYER_HP
            
     def move(self):
         self.pos += pg.math.Vector2(self.velocity_x, self.velocity_y)
@@ -128,105 +126,165 @@ class Player(pg.sprite.Sprite):
 
 # Projectile
 class Bullet(pg.sprite.Sprite):
-    def __init__(self, x, y, angle):
+    def __init__(self, game, pos, dir, damage):
         super().__init__()
-        self.image = pg.image.load("bullet/1.png").convert()
-        self.image = pg.transform.rotozoom(self.image, 0, BULLET_SCALE)
+        self._layer = BULLET_LAYER
+        self.groups = game.all_sprites, game.bullets
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image = game.bullet_images[weapons[game.player.weapon]['bullet_size']]
         self.rect = self.image.get_rect()
-        self.rect.center = (x,y)
-        self.x = x
-        self.y = y
-        self.angle = angle
-        self.speed = BULLET_SPEED
-        self.x_vel = math.cos(self.angle * (2*math.pi/360)) * self.speed
-        self.y_vel = math.sin(self.angle * (2*math.pi/360)) * self.speed
-        self.bullet_lifetime = BULLET_LIFETIME
-        self.spawn_time = pg.time.get_ticks() # gets the specific time the bullet was created
-        pass
+        self.hit_rect = self.rect
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.vel = dir * weapons[game.player.weapon]['bullet_speed'] * uniform(0.9, 1.1)
+        self.spawn_time = pg.time.get_ticks()
+        self.damage = damage
     
-    def bullet_movement(self):
-        self.x += self.x_vel
-        self.y += self.y_vel
-        
-        self.rect.x = int(self.x)
-        self.rect.y = int(self.y)
-        
-        if pg.time.get_ticks() - self.spawn_time > self.bullet_lifetime:
-            self.kill()
-        pass
     def update(self):
-        self.bullet_movement()
+        self.pos += self.vel * self.game.dt
+        self.rect.center = self.pos
+        if pg.sprite.spritecollideany(self, self.game.walls):
+            self.kill()
+        if pg.time.get_ticks() - self.spawn_time > weapons[self.game.player.weapon]['bullet_lifetime']:
+            self.kill()
         
 # Enemy 
 class Enemy(pg.sprite.Sprite):
-    def __init__(self, position):
-        super().__init__(enemy_group, all_sprites_group)
-        self.image = pg.image.load('necromancer/0-3.png').convert_alpha()
-        self.image = pg.transform.rotozoom(self.image, 0, 2)
-        
+    def __init__(self, game, x, y, monster):
+        super().__init__()
+        self.type = monster
+        self._layer = MOB_LAYER
+        self.groups = game.all_sprites, game.mobs
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image = game.mob_img.copy()
         self.rect = self.image.get_rect()
-        self.rect.center = position
-        self.health = 4
-        self.direction = pg.math.Vector2()
-        self.velocity = pg.math.Vector2()
-        self.speed = ENEMY_SPEED
-        # self.health = ENEMY_HEALTH
-        self.attack_cooldown = 0
-        self.position = pg.math.Vector2(position)
+        self.rect.center = (x, y)
+        self.hit_rect = MONSTERS[monster]['hitRect'].copy()
+        self.hit_rect.center = self.rect.center
+        self.pos = vec(x, y)
+        self.vel = vec(0, 0)
+        self.acc = vec(0, 0)
+        self.rect.center = self.pos
+        self.rot = 0
+        self.health = MONSTERS[monster]['health']
+        self.speed = MONSTERS[monster]['speed']
+        self.target = game.player
         
-    def take_damage(self):
-        self.health -= PLAYER_ATTACK_DMG
-        pass
-        
-    def hunt_player(self):
-        player_vector = pg.math.Vector2(player.hitbox_rect.center)
-        enemy_vector = pg.math.Vector2(self.rect.center)
-        distance = self.get_vector_distance(player_vector, enemy_vector)
-        
-        if distance > 0:
-            self.direction = (player_vector - enemy_vector).normalize()
-        else:
-            self.direction = pg.math.Vector2()
-        
-        self.velocity = self.direction * self.speed
-        self.position += self.velocity
-        
-        self.rect.centerx = self.position.x
-        self.rect.centery = self.position.y
-        
-    def get_vector_distance(self, vect1, vect2):
-        return(vect1-vect2).magnitude()
-    
+    def avoid_mobs(self):
+        for mob in self.game.mobs:
+            if mob != self:
+                dist = self.pos - mob.pos
+                if 0 < dist.length() < MONSTERS[self.monster]['avoid_rad']:
+                    self.acc += dist.normalize()
+                    
+                    
     def update(self):
-        self.hunt_player()
-
-        if self.attack_cooldown > 0:
-            self.attack_cooldown -= 1
-
-        if self.rect.colliderect(player.hitbox_rect):
-            if self.attack_cooldown == 0:
-                self.attack()
-                self.attack_cooldown = 60
-
+        target_dist = self.target.pos - self.pos
+        if target_dist.length_squared() < MONSTERS[self.monster]['dectection_radius']**2:
+            if random() < 0.002:
+                choice(self.game.zombie_moan_sounds).play()
+            self.rot = target_dist.angle_to(vec(1, 0))
+            self.image = pg.transform.rotate(self.game.mob_img, self.rot)
+            self.rect.center = self.pos
+            self.acc = vec(1, 0).rotate(-self.rot)
+            self.avoid_mobs()
+            self.acc.scale_to_length(self.speed)
+            self.acc += self.vel * -1
+            self.vel += self.acc * self.game.dt
+            self.pos += self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
+            self.hit_rect.centerx = self.pos.x
+            collide_with_walls(self, self.game.walls, 'x')
+            self.hit_rect.centery = self.pos.y
+            collide_with_walls(self, self.game.walls, 'y')
+            self.rect.center = self.hit_rect.center
         if self.health <= 0:
+            choice(self.game.zombie_hit_sounds).play()
             self.kill()
+            self.game.map_img.blit(self.game.splat, self.pos - vec(32, 32))
+            
+    def draw_health(self):
+        if self.health > 60:
+            col = GREEN
+        elif self.health > 30:
+            col = YELLOW
+        else:
+            col = RED
+        width = int(self.rect.width * self.health / MONSTERS[self.monster]['health'])
+        self.health_bar = pg.Rect(0, 0, width, 7)
+        if self.health < MONSTERS[self.monster]['health']:
+            pg.draw.rect(self.image, col, self.health_bar)
+
+
         
-class Necromancer(Enemy):
-    def __init__(self, position):
-        super().__init__(position)
-
-        self.image = pg.image.load(
-            'necromancer/0-3.png'
-        ).convert_alpha()
-
-        self.image = pg.transform.rotozoom(
-            self.image, 0, 2
-        )
-
-        self.rect = self.image.get_rect(center=position)
-
-        self.health = NECROMANCER_HP
+    # def hunt_player(self):
+    #     player_vector = pg.math.Vector2(player.hitbox_rect.center)
+    #     enemy_vector = pg.math.Vector2(self.rect.center)
+    #     distance = self.get_vector_distance(player_vector, enemy_vector)
         
-    def attack(self):
-        player.take_damage(NECROMANCER_ATTACK_DMG)
+    #     if distance > 0:
+    #         self.direction = (player_vector - enemy_vector).normalize()
+    #     else:
+    #         self.direction = pg.math.Vector2()
         
+    #     self.velocity = self.direction * self.speed
+    #     self.position += self.velocity
+        
+    #     self.rect.centerx = self.position.x
+    #     self.rect.centery = self.position.y
+        
+    # def get_vector_distance(self, vect1, vect2):
+    #     return(vect1-vect2).magnitude()
+    
+    # def update(self):
+    #     self.hunt_player()
+
+    #     if self.attack_cooldown > 0:
+    #         self.attack_cooldown -= 1
+
+    #     if self.rect.colliderect(player.hitbox_rect):
+    #         if self.attack_cooldown == 0:
+    #             self.attack()
+    #             self.attack_cooldown = 60
+
+    #     if self.health <= 0:
+    #         self.kill()
+
+class Item(pg.sprite.Sprite):
+
+    def __init__(self, game, pos, type):
+        super().__init__()
+        self._layer = ITEMS_LAYER
+        self.groups = game.all_sprites, game.items
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image = game.item_images[type]
+        self.rect = self.image.get_rect()
+        self.type = type
+        self.pos = pos
+        self.rect.center = pos
+        self.tween = tween.easeInOutSine
+        self.step = 0
+        self.dir = 1
+        
+    def update(self):
+        # bobbing motion
+        offset = BOBBING_RANGE * (self.tween(self.step / BOBBING_RANGE) - 0.5)
+        self.rect.centery = self.pos.y + offset * self.dir
+        self.step += BOBBING_SPEED
+        if self.step > BOBBING_RANGE:
+            self.step = 0
+            self.dir *= -1
+            
+class Barrier(pg.sprite.Sprite):
+    def __init__(self, game, x, y, w, h):
+        self.groups = game.walls
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.rect = pg.Rect(x, y, w, h)
+        self.hit_rect = self.rect
+        self.x = x
+        self.y = y
+        self.rect.x = x
+        self.rect.y = y

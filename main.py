@@ -39,7 +39,120 @@ class Game:
         self.screen.blit(text_surface, text_rect)
         
     def load_data(self):
-        pass
+        game_folder = path.dirname(__file__)
+        
     
     def new_game(self):
+        self.all_sprites = pg.sprite.LayeredUpdates()
+        self.walls = pg.sprite.Group()
+        self.mobs = pg.sprite.Group()
+        self.bullets = pg.sprite.Group()
+        self.items = pg.sprite.Group()
+        self.map = TiledMap(path.join(self.map_folder, 'level1.tmx'))
+        self.map_img = self.map.make_map()
+        self.map.rect = self.map_img.get_rect()
+        for tile_object in self.map.tmxdata.objects:
+            obj_center = vec(tile_object.x + tile_object.width / 2,
+                             tile_object.y + tile_object.height / 2)
+            # if tile_object.name == 'player':
+            #     self.player = Player(self, obj_center.x, obj_center.y)
+            # if tile_object.name == 'zombie':
+            #     Mob(self, obj_center.x, obj_center.y)
+            # if tile_object.name == 'wall':
+            #     Obstacle(self, tile_object.x, tile_object.y,
+            #              tile_object.width, tile_object.height)
+            # if tile_object.name in ['health', 'shotgun']:
+            #     Item(self, obj_center, tile_object.name)
+        self.camera = Camera(self.map.width, self.map.height)
+        self.draw_debug = False
+        self.paused = False
+        self.night = False
+        self.effects_sounds['level_start'].play()
+
+
+    def run(self):
+        # game loop - set self.playing = False to end the game
+        self.playing = True
+        # pg.mixer.music.play(loops=-1)
+        while self.playing:
+            self.dt = self.clock.tick(FPS) / 1000.0  # fix for Python 2.x
+            self.events()
+            if not self.paused:
+                self.update()
+            self.draw()
+
+    def quit(self):
+        pg.quit()
+        sys.exit()
+
+    def update(self):
+        # update portion of the game loop
+        self.all_sprites.update()
+        self.camera.update(self.player)
+        # game over?
+        if len(self.mobs) == 0:
+            self.playing = False
+        # player hits items
+        hits = pg.sprite.spritecollide(self.player, self.items, False)
+        for hit in hits:
+            if hit.type == 'health' and self.player.health < PLAYER_HP:
+                hit.kill()
+                self.effects_sounds['health_up'].play()
+                self.player.add_health(HEALTH_PACK_RECOVERY)
+            if hit.type == 'shotgun':
+                hit.kill()
+                self.effects_sounds['gun_pickup'].play()
+                self.player.weapon = 'shotgun'
+                
+                
+        # mobs hit player
+        hits = pg.sprite.spritecollide(self.player, self.mobs, False, collide_hit_rect)
+        for enemy in hits:
+            if isinstance(enemy, Enemy):
+                
+                self.player.health -= MONSTERS[enemy.type]['attack_dmg']
+                hit.vel = vec(0, 0)
+                if self.player.health <= 0:
+                    self.playing = False
+                
+                
+        # bullets hit mobs
+        hits = pg.sprite.groupcollide(self.mobs, self.bullets, False, True)
+        for mob in hits:
+            hit.health -= weapons[self.player.weapon]['damage'] * len(hits[hit])
+            for bullet in hits[mob]:
+                mob.health -= bullet.damage
+            mob.vel = vec(0, 0)
+    
+    
+    def show_start_screen(self):
         pass
+
+    def show_go_screen(self):
+        self.screen.fill(BLACK)
+        self.draw_text("GAME OVER", self.title_font, 100, RED,
+                       WIDTH / 2, HEIGHT / 2, align="center")
+        self.draw_text("Press a key to start", self.title_font, 75, WHITE,
+                       WIDTH / 2, HEIGHT * 3 / 4, align="center")
+        pg.display.flip()
+        self.wait_for_key()
+
+    def wait_for_key(self):
+        pg.event.wait()
+        waiting = True
+        while waiting:
+            self.clock.tick(FPS)
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    waiting = False
+                    self.quit()
+                if event.type == pg.KEYUP:
+                    waiting = False
+
+# create the game object
+g = Game()
+g.show_start_screen()
+while True:
+    g.new_game()
+    g.run()
+    g.show_go_screen()

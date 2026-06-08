@@ -175,7 +175,7 @@ class Enemy(pygame.sprite.Sprite):
         self.position = pygame.math.Vector2(position)
         
     def take_damage(self):
-        self.health -= PLAYER_ATTACK_DMG
+        self.health -= weapons['pistol']['damage']
         pass
         
     def hunt_player(self):
@@ -225,8 +225,8 @@ class Necromancer(Enemy):
 
         self.rect = self.image.get_rect(center=position)
 
-        self.health = NECROMANCER_HP
+        self.health = monster_stats['necromancer']['health']
         
     def attack(self):
-        player.take_damage(NECROMANCER_ATTACK_DMG)
+        player.take_damage(monster_stats['necromancer']['attack_dmg'])
         

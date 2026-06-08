@@ -41,12 +41,15 @@ weapons = {
 
 # Enemy Settings
 ENEMY_SPEED = 4
-monster_stats = {
+MONSTERS = {
     'necromancer': {'image': 'necromancer/necro.png', 
                     'speed': 5, 
                     'hitRect': pygame.Rect(0,0,30,30), 
                     'health': 20,
-                    'dectection_radius': 400}
+                    'dectection_radius': 400,
+                    'attack_dmg': 20,
+                    'avoid_rad': 50
+                    }
 }
 
 
@@ -72,5 +75,6 @@ ITEMS_LAYER = 1
 # Items
 ITEM_IMAGES = {'medkit': 'items/medKit.png',
                'box': 'items/supplyBox.png'}
+HEALTH_PACK_RECOVERY = 20
 BOBBING_RANGE = 10
 BOBBING_SPEED = 0.3
