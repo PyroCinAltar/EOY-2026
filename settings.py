@@ -17,7 +17,7 @@ TILE_SIZE = 32
 # Enemy Settings
 ENEMY_SPEED = 4
 MONSTERS = {
-    'necromancer': {'image': 'necromancer/necro.png', 
+    'necromancer': {'image': 'sprites/blob.png', 
                     'speed': 4, 
                     'hitRect': pygame.Rect(0,0,30,30), 
                     'health': 25,

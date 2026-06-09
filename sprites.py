@@ -11,6 +11,17 @@ class Player:
         self.hp = PLAYER_HP
         self.angle = 0
         
+        self.original_image = pygame.image.load(
+            "sprites/player.png"
+        ).convert_alpha()
+
+        self.original_image = pygame.transform.scale(
+            self.original_image,
+            (32, 32)
+        )
+
+        self.image = self.original_image
+        
     #rotating
     def update_angle(self, mouse_pos, camera):
         mx, my = mouse_pos
@@ -58,20 +69,43 @@ class Player:
                 if dy < 0: self.rect.top = w.bottom
 
     def draw(self, screen, camera):
-        pygame.draw.rect(
-            screen,
-            (50, 120, 255),
-            self.rect.move(-camera.offset.x, -camera.offset.y)
-        )
+        # pygame.draw.rect(
+        #     screen,
+        #     (50, 120, 255),
+        #     self.rect.move(-camera.offset.x, -camera.offset.y)
+        # )
         
         # Col-Hit Box
-        pygame.draw.rect(
-            screen,
-            (0, 255, 0),
-            self.rect.move(-camera.offset.x, -camera.offset.y),
-            2  # thickness = outline only
-        )
+        # pygame.draw.rect(
+        #     screen,
+        #     (0, 255, 0),
+        #     self.rect.move(-camera.offset.x, -camera.offset.y),
+        #     2  # thickness = outline only
+        # )
         
+        angle_deg = -math.degrees(self.angle)
+
+        rotated = pygame.transform.rotate(
+            self.original_image,
+            angle_deg
+        )
+
+        draw_rect = rotated.get_rect(
+            center=(
+                self.rect.centerx - camera.offset.x,
+                self.rect.centery - camera.offset.y
+            )
+        )
+
+        screen.blit(rotated, draw_rect)
+
+        # Debug collision box
+        # pygame.draw.rect(
+        #     screen,
+        #     (0, 255, 0),
+        #     self.rect.move(-camera.offset.x, -camera.offset.y),
+        #     1
+        # )
         # Rotation Angle
         pos = self.rect.center
         pos = (pos[0] - camera.offset.x, pos[1] - camera.offset.y)
@@ -80,7 +114,7 @@ class Player:
         end_x = pos[0] + math.cos(self.angle) * 20
         end_y = pos[1] + math.sin(self.angle) * 20
 
-        pygame.draw.line(screen, (255, 255, 0), pos, (end_x, end_y), 2)
+        # pygame.draw.line(screen, (255, 255, 0), pos, (end_x, end_y), 2)
     
 
 
@@ -93,18 +127,38 @@ class Bullet:
         self.dy = math.sin(angle) * BULLET_SPEED
         
         self.damage = BULLET_DAMAGE
+        
+        self.original_image = pygame.image.load(
+            "sprites/bullet.png"
+        ).convert_alpha()
+
+        self.original_image = pygame.transform.scale(
+            self.original_image,
+            (8, 8)
+        )
+
+        self.angle = angle
 
     def update(self):
         self.rect.x += self.dx
         self.rect.y += self.dy
 
     def draw(self, screen, camera):
-        pygame.draw.rect(
-            screen,
-            (255, 255, 255),
-            self.rect.move(-camera.offset.x, -camera.offset.y)
+
+        rotated = pygame.transform.rotate(
+            self.original_image,
+            -math.degrees(self.angle)
         )
-    
+
+        draw_rect = rotated.get_rect(
+            center=(
+                self.rect.centerx - camera.offset.x,
+                self.rect.centery - camera.offset.y
+            )
+        )
+
+        screen.blit(rotated, draw_rect)
+        
     #doesn't let bullets pass through walls
     def hits_wall(self, walls):
         for wall in walls:
@@ -156,11 +210,23 @@ class Enemy:
         self.damage = MONSTERS['necromancer']['attack_dmg']
         self.last_attack = 0
         self.attack_cooldown = MONSTERS['necromancer']['cooldown']
+        
+        self.original_image = pygame.image.load(
+            "sprites/blob.png"
+        ).convert_alpha()
+
+        self.original_image = pygame.transform.scale(
+            self.original_image,
+            (32, 32)
+        )
+
+        self.angle = 0
 
     def update(self, player, walls):
         dx = player.rect.centerx - self.rect.centerx
         dy = player.rect.centery - self.rect.centery
         dist = math.hypot(dx, dy)
+        self.angle = math.atan2(dy, dx)
     
         detection = MONSTERS['necromancer']['detection_radius']
         if dist > detection:
@@ -197,11 +263,20 @@ class Enemy:
                         self.rect.top = wall.bottom
                         
     def draw(self, screen, camera):
-        pygame.draw.rect(
-            screen,
-            (220, 60, 60),
-            self.rect.move(-camera.offset.x, -camera.offset.y)
+
+        rotated = pygame.transform.rotate(
+            self.original_image,
+            -math.degrees(self.angle)
         )
+
+        draw_rect = rotated.get_rect(
+            center=(
+                self.rect.centerx - camera.offset.x,
+                self.rect.centery - camera.offset.y
+            )
+        )
+
+        screen.blit(rotated, draw_rect)
         
     def attack(self, player):
         current_time = pygame.time.get_ticks()
