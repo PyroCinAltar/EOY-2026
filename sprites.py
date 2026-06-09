@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-from settings import PLAYER_SPEED, BULLET_SPEED, BULLET_DAMAGE, PLAYER_HP, MONSTERS
+from settings import PLAYER_SPEED, BULLET_SPEED, BULLET_DAMAGE, PLAYER_HP, MONSTERS, PLAYER_IMG, BULLET_IMG
 
 # ---------------- PLAYER ----------------
 
@@ -12,7 +12,7 @@ class Player:
         self.angle = 0
         
         self.original_image = pygame.image.load(
-            "sprites/player.png"
+            PLAYER_IMG
         ).convert_alpha()
 
         self.original_image = pygame.transform.scale(
@@ -129,7 +129,7 @@ class Bullet:
         self.damage = BULLET_DAMAGE
         
         self.original_image = pygame.image.load(
-            "sprites/bullet.png"
+            BULLET_IMG
         ).convert_alpha()
 
         self.original_image = pygame.transform.scale(
@@ -212,7 +212,7 @@ class Enemy:
         self.attack_cooldown = MONSTERS['necromancer']['cooldown']
         
         self.original_image = pygame.image.load(
-            "sprites/blob.png"
+            MONSTERS['necromancer']['image']
         ).convert_alpha()
 
         self.original_image = pygame.transform.scale(

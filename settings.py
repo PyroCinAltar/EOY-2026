@@ -7,6 +7,8 @@ FPS = 60
 
 PLAYER_SPEED = 4
 BULLET_SPEED = 10
+PLAYER_IMG = 'sprites/player.png'
+BULLET_IMG = 'sprites/bullet.png'
 
 PLAYER_HP = 100
 BULLET_DAMAGE = 1
@@ -30,3 +32,4 @@ MONSTERS = {
 }
 
 MAX_NAME_LENGTH = 12
+
