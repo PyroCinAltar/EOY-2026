@@ -18,13 +18,15 @@ TILE_SIZE = 32
 ENEMY_SPEED = 4
 MONSTERS = {
     'necromancer': {'image': 'necromancer/necro.png', 
-                    'speed': 5, 
+                    'speed': 4, 
                     'hitRect': pygame.Rect(0,0,30,30), 
-                    'health': 20,
-                    'detection_radius': 200,
+                    'health': 25,
+                    'detection_radius': 500,
                     'attack_dmg': 20,
                     'avoid_rad': 50,
                     'cooldown': 1000
                 
                     }
 }
+
+MAX_NAME_LENGTH = 12

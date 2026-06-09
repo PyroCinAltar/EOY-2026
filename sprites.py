@@ -81,7 +81,7 @@ class Player:
         end_y = pos[1] + math.sin(self.angle) * 20
 
         pygame.draw.line(screen, (255, 255, 0), pos, (end_x, end_y), 2)
-            
+    
 
 
 # ---------------- BULLET ----------------
@@ -116,6 +116,38 @@ class Bullet:
 
 # ---------------- ENEMY ----------------
 
+def has_line_of_sight(start, end, walls, step=4):
+    """
+    Returns True if no wall blocks view between start and end.
+    """
+
+    x1, y1 = start
+    x2, y2 = end
+
+    dx = x2 - x1
+    dy = y2 - y1
+    dist = math.hypot(dx, dy)
+
+    if dist == 0:
+        return True
+
+    dx /= dist
+    dy /= dist
+
+    x, y = x1, y1
+
+    for i in range(int(dist // step)):
+        x += dx * step
+        y += dy * step
+
+        point_rect = pygame.Rect(x, y, 2, 2)
+
+        for wall in walls:
+            if point_rect.colliderect(wall):
+                return False
+
+    return True
+
 class Enemy:
     def __init__(self, x, y):
         self.rect = pygame.Rect(x, y, 28, 28)
@@ -129,6 +161,16 @@ class Enemy:
         dx = player.rect.centerx - self.rect.centerx
         dy = player.rect.centery - self.rect.centery
         dist = math.hypot(dx, dy)
+    
+        detection = MONSTERS['necromancer']['detection_radius']
+        if dist > detection:
+            self.speed = 0
+            return
+        else:
+            self.speed = MONSTERS['necromancer']['speed']
+            
+        if not has_line_of_sight(self.rect.center, player.rect.center, walls):
+            return
 
         if dist != 0:
             move_x = dx / dist * self.speed
