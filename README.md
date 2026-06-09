@@ -1,1 +1,0 @@
-This project was a way to learn pygame and a bit more on game development.

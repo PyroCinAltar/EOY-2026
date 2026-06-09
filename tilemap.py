@@ -1,51 +1,93 @@
 import pygame
 import pytmx
-from settings import *
 
-def collide_hit_rect(obj1, obj2):
-    return obj1.hit_rect.colliderect(obj2.rect)
 
-class TiledMap:
+class TileMap:
     def __init__(self, filename):
-        tm = pytmx.load_pygame(filename, pixelalpha=True)
-        self.width = tm.width * tm.tilewidth
-        self.height = tm.height * tm.tileheight
-        self.tmxdata = tm
+        self.tmx = pytmx.load_pygame(filename)
 
-    def render(self, surface):
-        ti = self.tmxdata.get_tile_image_by_gid
-        for layer in self.tmxdata.visible_layers:
-            if isinstance(layer, pytmx.TiledTileLayer):
-                for x, y, gid, in layer:
-                    tile = ti(gid)
+        self.width = self.tmx.width * self.tmx.tilewidth
+        self.height = self.tmx.height * self.tmx.tileheight
+
+        self.walls = []
+        self.enemy_spawns = []
+        self.player_spawn = (100, 100)
+        self.exit_rect = None
+
+        self.load_collision_tiles()
+        self.load_objects()
+
+    # ---------------- TILE COLLISION ----------------
+    def load_collision_tiles(self):
+        layer = self.tmx.get_layer_by_name("WallMap")
+
+        for y in range(layer.height):
+            for x in range(layer.width):
+
+                gid = layer.data[y][x]
+
+                if gid != 0:  # 0 = empty tile
+                    self.walls.append(
+                        pygame.Rect(
+                            x * self.tmx.tilewidth,
+                            y * self.tmx.tileheight,
+                            self.tmx.tilewidth,
+                            self.tmx.tileheight
+                        )
+                    )
+        
+
+    # ---------------- OBJECTS ----------------
+    def load_objects(self):
+
+        if self.tmx.get_layer_by_name("Spawns"):
+            for obj in self.tmx.get_layer_by_name("Spawns"):
+
+                if obj.name == "PlayerSpawn":
+                    self.player_spawn = (obj.x, obj.y)
+
+                elif obj.type == "EnemySpawn":
+                    self.enemy_spawns.append((obj.x, obj.y))
+
+        if self.tmx.get_layer_by_name("ExitDoors"):
+            for obj in self.tmx.get_layer_by_name("ExitDoors"):
+                self.exit_rect = pygame.Rect(obj.x, obj.y, obj.width, obj.height)
+
+    # ---------------- DRAW MAP ----------------
+    def draw(self, screen, camera):
+        for layer in self.tmx.visible_layers:
+
+        # Only tile layers
+            if layer.__class__.__name__ == "TiledTileLayer":
+
+                for x, y, gid in layer:
+                    tile = self.tmx.get_tile_image_by_gid(gid)
+
                     if tile:
-                        surface.blit(tile, (x * self.tmxdata.tilewidth,
-                                            y * self.tmxdata.tileheight))
-
-    def make_map(self):
-        temp_surface = pygame.Surface((self.width, self.height))
-        self.render(temp_surface)
-        return temp_surface
-
-class Camera:
-    def __init__(self, width, height):
-        self.camera = pygame.Rect(0, 0, width, height)
-        self.width = width
-        self.height = height
-
-    def apply(self, entity):
-        return entity.rect.move(self.camera.topleft)
-
-    def apply_rect(self, rect):
-        return rect.move(self.camera.topleft)
-
-    def update(self, target):
-        x = -target.rect.centerx + int(WIDTH / 2)
-        y = -target.rect.centery + int(HEIGHT / 2)
-
-
-        x = min(0, x) 
-        y = min(0, y)  
-        x = max(-(self.width - WIDTH), x)  
-        y = max(-(self.height - HEIGHT), y)  
-        self.camera = pygame.Rect(x, y, self.width, self.height)
+                        screen.blit(
+                            tile,
+                            (
+                                x * self.tmx.tilewidth - camera.offset.x,
+                                    y * self.tmx.tileheight - camera.offset.y
+                            )
+                        )
+            # exit 
+        #     if self.tmx.get_layer_by_name("ExitDoors"):
+        #         for obj in self.tmx.get_layer_by_name("ExitDoors"):
+        #             self.exit_rect = pygame.Rect(
+        #                 obj.x,
+        #                 obj.y,
+        #                 obj.width,
+        #                 obj.height
+        # )
+             
+                
+        #    Wall debug
+    # def draw_walls(self, screen, camera):
+    #     for w in self.walls:
+    #         pygame.draw.rect(
+    #             screen,
+    #                 (255, 0, 0),
+    #             w.move(-camera.offset.x, -camera.offset.y),
+    #             1
+    #         )
